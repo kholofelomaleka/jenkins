@@ -1,0 +1,54 @@
+REVISITING DOCKER & JENKINS
+
+This repo is meant to help me understand:
+-> Writing my own Dockerfiles
+-> Minimising image dependencies on public images (building own images)
+-> Creating and using Data Volumes, including backups (Check linux notes)
+-> Creating containerized "Build environments" using containers
+-> Handling "secret" data with images and Jenkins
+
+
+DOCKER CHANGES
+
+Docker Volumes
+- Persist until manual deletion from docker host.
+- Integrate with storage plugins to enable shared data volumes across a cluster.
+
+Docker Networks
+- Docker Host uses vm's ip address, networks can be independently created, named and maintained
+  without any containers or images.
+- Containers can be attached to a network and even the simplest form of ocker offers service discovery
+  and exposes all containers inside the network via DNS.
+
+Docker Compose
+- Makes is simple to create multiple networks, volumes and services.
+
+---> add rest of changes later!
+
+
+JENKINS CHANGES
+
+Jenkins version
+- Cloudbees Dockerfiles
+
+Docker Plugins
+
+---> more changes later!
+
+
+PART 1 - Thinking Inside the Container
+PART 2 - Puting Jenkins in a Docker Container
+ - Deploying Jenkins with these architectural components in mind:
+	-> Jenkins master server (Java process)
+	-> Jenkins master data (Plugins, Job definitions, etc...)
+	-> NGINX web proxy (ssl certs for security etc...)
+	-> Build slave agents (Containers that can be ssh'd into, or JNLP connection to, Jenkins Master)
+
+ - DAEMONIZING 
+ 	-> Running jenkins using the -d flag -- prevents logs from showing on the terminal
+		$ docker run -p 8080:8080 --name=jenkins-master -d jenkins/jenkins
+	-> Memory settings, using the --env JAVA_OPTS="" flag to limit Jenkins memory usage.
+		$ docker run -p 8080:8080 --name=jenkins-master -d --env JAVA_OPTS="-Xmx8192m" jenkins/jenkins
+	-> Increasing The Connection Pool using --env JENKINS_OPTS=" --handlerCountMax=300" - To set limit of connections
+		$ docker run -p 8080:8080 --name=jenkins-master -d --env JAVA_OPTS="-Xmx8192m" --env JENKINS_OPTS=" --handlerCountMax=300" jenkins/jenkins
+
