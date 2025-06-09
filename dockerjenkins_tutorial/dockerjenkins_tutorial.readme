@@ -37,7 +37,11 @@ Docker Plugins
 
 
 PART 1 - Thinking Inside the Container
+
 PART 2 - Puting Jenkins in a Docker Container
+
+ LESSON 1 - Setup and Run First Jenkins Image
+
  - Deploying Jenkins with these architectural components in mind:
 	-> Jenkins master server (Java process)
 	-> Jenkins master data (Plugins, Job definitions, etc...)
@@ -51,4 +55,32 @@ PART 2 - Puting Jenkins in a Docker Container
 		$ docker run -p 8080:8080 --name=jenkins-master -d --env JAVA_OPTS="-Xmx8192m" jenkins/jenkins
 	-> Increasing The Connection Pool using --env JENKINS_OPTS=" --handlerCountMax=300" - To set limit of connections
 		$ docker run -p 8080:8080 --name=jenkins-master -d --env JAVA_OPTS="-Xmx8192m" --env JENKINS_OPTS=" --handlerCountMax=300" jenkins/jenkins
-
+ - COMMENTS
+   -- The Jenkins container/image is useful but:
+	-> Has no consistent logging,
+	-> No persistence,
+	-> No web server proxy in front of it.
+	-> Keep in mind Jenkins versions...
+	-> dockerjenkins_tutorial/tutorial01/makefile
+ 
+ LESSON 2 - A JENKINS BASE IMAGE WRAPPER
+ 
+ - Work within a Dockerfile
+	-> Set env vars
+	-> Create folders and permissions
+	-> dockerjenkins_tutorial/tutorial01/Dockerfile
+ - Testing the Dockerfile
+	-> $ docker build -t myjenkins . -- Builds Jenkins using the Dockerfile
+	-> $ docker stop jenkins-master -- If jenkins-master is still running, stop it.
+	-> $ docker rm jenkins-master -- Remove the container using this command.
+	-> $ docker run -p 8080:8080 --name=jenkins-master -d myjenkins
+ - Run Basic Commands Against The Container
+	-> docker exec jenkins-master ps -ef |grep java -- This will check if the Jenkins Java process is running.
+ - Setup a Log Folder
+	-> Add "RUN mkdir /var/log/jenkins" to the Dockerfile to persist the Jenkins log file
+	- Copy and view log:
+	-> $ docker cp jenkins-master:/var/log/jenkins/jenkins.log jenkins.log; cat jenkins.log;
+ - COMMENTS
+   -- Seems below params are depricated?
+	ENV JAVA_OPTS="-Xmx8192m"
+	ENV JENKINS_OPTS=" --handlerCountMax=300"
