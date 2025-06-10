@@ -38,49 +38,116 @@ Docker Plugins
 
 PART 1 - Thinking Inside the Container
 
-PART 2 - Puting Jenkins in a Docker Container
+PART 2 - Putting Jenkins in a Docker Container
+LESSON 1 - Setup and Run First Jenkins Image
+Deploying Jenkins with Key Architectural Components:
 
- LESSON 1 - Setup and Run First Jenkins Image
+    Jenkins Master Server: The core Java process responsible for orchestrating builds.
+    Jenkins Master Data: Crucial data including plugins, job definitions, build history, and configuration. This requires persistence.
+    NGINX Web Proxy: (Optional but Recommended) Used for secure access (SSL certificates), load balancing, and potentially serving static content.
+    Build Slave Agents: Separate containers or machines that connect to the Jenkins Master (via SSH or JNLP/Remoting) to execute build jobs, distributing the workload.
 
- - Deploying Jenkins with these architectural components in mind:
-	-> Jenkins master server (Java process)
-	-> Jenkins master data (Plugins, Job definitions, etc...)
-	-> NGINX web proxy (ssl certs for security etc...)
-	-> Build slave agents (Containers that can be ssh'd into, or JNLP connection to, Jenkins Master)
+Daemonizing and Configuring the Jenkins Container:
 
- - DAEMONIZING 
- 	-> Running jenkins using the -d flag -- prevents logs from showing on the terminal
-		$ docker run -p 8080:8080 --name=jenkins-master -d jenkins/jenkins
-	-> Memory settings, using the --env JAVA_OPTS="" flag to limit Jenkins memory usage.
-		$ docker run -p 8080:8080 --name=jenkins-master -d --env JAVA_OPTS="-Xmx8192m" jenkins/jenkins
-	-> Increasing The Connection Pool using --env JENKINS_OPTS=" --handlerCountMax=300" - To set limit of connections
-		$ docker run -p 8080:8080 --name=jenkins-master -d --env JAVA_OPTS="-Xmx8192m" --env JENKINS_OPTS=" --handlerCountMax=300" jenkins/jenkins
- - COMMENTS
-   -- The Jenkins container/image is useful but:
-	-> Has no consistent logging,
-	-> No persistence,
-	-> No web server proxy in front of it.
-	-> Keep in mind Jenkins versions...
-	-> dockerjenkins_tutorial/tutorial01/makefile
- 
- LESSON 2 - A JENKINS BASE IMAGE WRAPPER
- 
- - Work within a Dockerfile
-	-> Set env vars
-	-> Create folders and permissions
-	-> dockerjenkins_tutorial/tutorial01/Dockerfile
- - Testing the Dockerfile
-	-> $ docker build -t myjenkins . -- Builds Jenkins using the Dockerfile
-	-> $ docker stop jenkins-master -- If jenkins-master is still running, stop it.
-	-> $ docker rm jenkins-master -- Remove the container using this command.
-	-> $ docker run -p 8080:8080 --name=jenkins-master -d myjenkins
- - Run Basic Commands Against The Container
-	-> docker exec jenkins-master ps -ef |grep java -- This will check if the Jenkins Java process is running.
- - Setup a Log Folder
-	-> Add "RUN mkdir /var/log/jenkins" to the Dockerfile to persist the Jenkins log file
-	- Copy and view log:
-	-> $ docker cp jenkins-master:/var/log/jenkins/jenkins.log jenkins.log; cat jenkins.log;
- - COMMENTS
-   -- Seems below params are depricated?
-	ENV JAVA_OPTS="-Xmx8192m"
-	ENV JENKINS_OPTS=" --handlerCountMax=300"
+    Running in Detached Mode (-d): Prevents logs from being displayed directly in the terminal, allowing the container to run in the background.
+    Bash
+
+$ docker run -p 8080:8080 --name jenkins-master -d jenkins/jenkins
+
+Controlling Jenkins Memory Usage (JAVA_OPTS): Use the --env JAVA_OPTS="" flag to set JVM options for the Jenkins process, such as the maximum heap size.
+Bash
+
+$ docker run -p 8080:8080 --name jenkins-master -d --env JAVA_OPTS="-Xmx8192m" jenkins/jenkins
+
+    Correction: Xmx8192m is 8GB, which is a very high memory allocation for a typical Jenkins master unless you have a massive number of concurrent builds or plugins. For most setups, a lower value like -Xmx2048m (2GB) or -Xmx4096m (4GB) might be more appropriate. Over-allocating can lead to inefficient resource usage on your host.
+
+Increasing the Connection Pool (JENKINS_OPTS): Use --env JENKINS_OPTS="--handlerCountMax=..." to adjust the maximum number of concurrent HTTP requests Jenkins can handle.
+Bash
+
+    $ docker run -p 8080:8080 --name jenkins-master -d --env JAVA_OPTS="-Xmx8192m" --env JENKINS_OPTS="--handlerCountMax=300" jenkins/jenkins
+
+        Correction: The handlerCountMax parameter should have two hyphens (--). This is crucial for correctly passing the option to Jenkins.
+
+Important Considerations for the Basic Docker Container:
+
+    Lack of Consistent Logging: Running directly without volume mounts means logs are only available via docker logs and are lost if the container is removed.
+    No Data Persistence: Without a bind mount or named volume, all Jenkins data (plugins, jobs, configuration) is lost if the container is deleted. This is a critical issue for production environments.
+    No Web Server Proxy: Directly exposing Jenkins on port 8080 without a proxy means no SSL/TLS encryption, making it insecure for external access.
+    Jenkins Version Management: Be mindful of the jenkins/jenkins tag you use (e.g., jenkins/jenkins:lts for Long-Term Support).
+    Reference: dockerjenkins_tutorial/tutorial01/makefile (This is a reference to a specific file in your tutorial structure).
+
+LESSON 2 - A Jenkins Base Image Wrapper (Custom Dockerfile)
+Building a Custom Jenkins Image with a Dockerfile:
+
+    Purpose: To create a more controlled and configured Jenkins image tailored to your needs, including setting environment variables, creating directories, and managing permissions.
+    Structure: Work within a Dockerfile.
+        Set environment variables (e.g., ENV JAVA_OPTS, ENV JENKINS_OPTS).
+        Create necessary folders and set appropriate permissions.
+        Reference: dockerjenkins_tutorial/tutorial01/Dockerfile
+
+Testing the Custom Dockerfile:
+
+    Build the Image:
+    Bash
+
+$ docker build -t myjenkins .
+
+    Correction: It's good practice to tag images with a version (e.g., myjenkins:1.0 or myjenkins:latest).
+
+Stop Existing Container (if running):
+Bash
+
+$ docker stop jenkins-master
+
+Remove Existing Container:
+Bash
+
+$ docker rm jenkins-master
+
+Run the New Custom Image:
+Bash
+
+    $ docker run -p 8080:8080 --name jenkins-master -d myjenkins
+
+Running Basic Commands Against the Container:
+
+    Check Jenkins Java Process:
+    Bash
+
+$ docker exec jenkins-master ps -ef | grep java
+
+    Correction: Add [j]ava to the grep pattern to avoid matching the grep process itself, making the output cleaner: grep [j]ava.
+
+Bash
+
+    $ docker exec jenkins-master ps -ef | grep [j]ava
+
+Setting up a Log Folder (for Persistence):
+
+    Adding to Dockerfile:
+    Dockerfile
+
+RUN mkdir -p /var/log/jenkins && chown jenkins:jenkins /var/log/jenkins
+
+    Correction: Added -p to mkdir to ensure parent directories are created if they don't exist. More importantly, it's crucial to set the correct ownership (chown jenkins:jenkins) if the Jenkins process runs as the jenkins user within the container, otherwise, it won't be able to write logs. This directory should also ideally be part of a mounted volume for true host-side persistence.
+
+Copy and View Log (for inspection after creation):
+Bash
+
+    $ docker cp jenkins-master:/var/log/jenkins/jenkins.log jenkins.log; cat jenkins.log;
+
+Comments on Parameter Deprecation:
+
+    ENV JAVA_OPTS="-Xmx8192m": Works fine. These environment variables are standard and directly consumed by the Jenkins startup scripts within the official Docker image.
+    ENV JENKINS_OPTS="--handlerCountMax=300": Works! As noted above, ensure the double hyphens (--).
+
+Summary of Corrections and Enhancements:
+
+    Clarity on Components: Better explanations for each architectural component.
+    Xmx Value: Added a note about Xmx sizing and total JVM memory usage.
+    JENKINS_OPTS Syntax: Corrected the double hyphens for --handlerCountMax.
+    docker build Tagging: Recommended using versions or :latest for custom image tags.
+    grep Command: Improved the grep pattern for cleaner output.
+    Log Folder Permissions: Emphasized the importance of setting correct ownership for the log directory within the Dockerfile (chown).
+    Data Persistence Importance: Explicitly mentioned that the log folder, and especially the Jenkins master data (/var/jenkins_home), must be mounted as a Docker volume for persistence in real-world scenarios. While the notes show creating the directory, this is only useful if you then bind-mount it.
+ - 
