@@ -88,4 +88,37 @@ PART 2 - Puting Jenkins in a Docker Container
 
 PART 3 - Data That Persists
 
- - 
+ - Containers and their data are ephemeral, all the data is lost when container is restarted.
+ - Volumes can be used to presserve the data, they sit outside the container and are mounted from the host (Dockerhost).
+ - DATA Volumes can also be used to persist data.
+
+ - HOST MOUNTED VOLUMES vs DATA VOLUMES 
+        -> Host Mounted Volumes: 
+          - Using the Docker host machine filesystems as physical storage that docker containers use to write data to.
+          - The data can be network or serially attached to the storage, taking advantage of space and performance.
+          - However, the mount points must be pre-configured on the Dockerhost, which eliminates container portabilitu and apps running anywhere.
+
+        -> Data Volumes
+          - Whenever a container is created, docker will persist the data in these types of volumes.
+          - Docker allows custom volumes that will not be removed when the container is removed.
+          - Docker Volumes allow containers to share data without the requirement that the host be configured with a mount point... i.e. no need to touch the host machine.
+          - The drawbacks, docker performance is a bit slower, (uses Docker Virtualized File Systems)... !!! performance not noticable for some apps
+          - Creating volumes is a bit complex, and because they persist, they must be manually deleted.
+
+ - USING DATA VOLUMES
+  -- There are Two Things to persist:
+        -> Log files (/var/log/jenkins), and
+        -> Jenkins App Data (jobs, plugins, configs...)
+        -> Creating the Volume
+        $ docker volume create jenkins-data || docker volume create jenkins-log
+        $ docker volume ls
+        $ docker volume rm jenkins-data || docker volume rm jenkins-log
+        $ docker volume prune
+
+
+PART 4 - JENKINS, DOCKER, PROXIES, AND COMPOSE
+
+ - PROXIES
+  -- NGINX - Enforces things like redirects to HTTPS, and masks Jenkins listening on port 8080 with a web server that listens on port 80.
+
+ - Setup Proxy to Jenkins Server
