@@ -122,3 +122,52 @@ PART 4 - JENKINS, DOCKER, PROXIES, AND COMPOSE
   -- NGINX - Enforces things like redirects to HTTPS, and masks Jenkins listening on port 8080 with a web server that listens on port 80.
 
  - Setup Proxy to Jenkins Server
+  - When working with multiple Dockerfiles, put them in their own subdir.
+	-> e.g. jenkins-nginx & jenkins-master will each have own Dockerfiles.
+  - Nginx Dockerfile
+	-> Using same centos7, try update later!!!
+	-> Install & expose port 80.
+  - Nginx Configuration File
+	-> To make NGINX not run as a daemon:
+		--> daemon off - NGINX will run in the background as a daemon if called from cmd line... this returns exit 0 which causes Docker to think the process has stopped, so it shuts down the container. 
+	-> Upping the NGINX worker count to 2:
+		--> worker_processes 2; - Tunes NGINX to only create specified individual processes. The number of CPUs allocated is a good guide. 
+	-> Event tuning:
+		--> use epoll; - This param is a tuning mechanism to use more efficient connection handling models.
+		--> accept_mutex off; -  Turned off accept_mutex for speed, because we don’t mind the wasted resources at low connection request counts.
+	-> Setting the proxy headers:
+		--> proxy_set_header X-Real-IP $remote_addr; - Sets the headers so that Jenkins can interpret the requests properly, which helps eliminate some warnings about improperly set headers.
+		--> proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	-> Client sizes:
+		--> client_max_body_size 300m; - Helps with file uploads, limits user file uploads to 300m
+		--> client_body_buffer_size 128k;
+	-> GZIP on:
+		--> gzip on; - Turn on gzip compression for speed.
+		--> gzip_http_version 1.0;
+		--> gzip_comp_level 6;
+		--> gzip_min_length 0;
+		--> gzip_buffers 16 8k;
+		--> gzip_proxied any;
+		--> gzip_types text/plain text/css text/xml text/javascript application/xml application/xml+rss application/javascript application/json;
+		--> gzip_disable "MSIE [1-6]\.";
+		--> gzip_vary on;
+
+  - Jenkins Configuration File For NGINX (see https://wiki.jenkins-ci.org/display/JENKINS/Jenkins+behind+an+NGinX+reverse+proxy for more info)
+	-> proxy_pass http://jenkins-master:8080; - Expects a domain name of jenkins-master to exist, which will come from Docker networks.  This must be referenced whenever Docker networks are not in use.
+		- Cannot be srt to localhost, it will see that as the NGINX container host.
+		- To avoid using Docker networks, it'd have to point to the IP address of the Dockerhost.
+		- Docker networks makes this much easier (https://docs.docker.com/engine/network/)
+
+  - Docker Network
+	-> $ docker network create --driver bridge jenkins-net - Creates docker network
+	  --> Creates the network for the 2 containers to find each other.  
+	  --> Docker networks uses "Automatic Service Delivery", which creates dns names on the network that match the names of the containers.
+	  
+
+ - DOCKER COMPOSE & JENKINS
+   - Docker compose is "A tool designed for running complex apps with Docker" - (https://docs.docker.com/compose/)
+   - Compose handles building images and maintaining responsibility around what to stop and start when the application is rerun.
+   - Can also help create data volumes and networks/
+
+
+

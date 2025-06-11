@@ -1,4 +1,4 @@
-FROM jenkins/jenkins:lts
+FROM jenkins/jenkins:latest
 LABEL maintainer="kholofelo.maleka@yahoo.com"
 
 ARG JAVA_OPTS="-Xmx256m" 
