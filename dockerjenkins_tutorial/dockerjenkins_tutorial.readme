@@ -217,4 +217,34 @@ PART 5 - TAKING CONTROL OF DOCKER IMAGE
    -> See tutorial06/Dockerfile
 
 
+PART 6 - BUILDING WITH JENKINS INSIDE EPHEMERAL DOCKER CONTAINERS
 
+  - DOCKER EXECUTION MODEL
+	-> This model assumes the slave is the Dockerhost, and is treated as a physical machine... 
+	-> When a jenkins job starts, it creates/syncs a working directory on the slave directory, leverages the "docker run" and "docker exec" commands to spin up containers, then mounts its local workspace inside
+	-> The container is a virtual scratchpad and isolated environment.
+	-> When the build job completes, all the binaries and build artifacts it produced will be n the slave in the traditional jenkins workspace. Jenkins then shuts down and does post-build cleanups.
+
+  - DOCKER EPHEMERAL SLAVE MODEL
+	-> This model aims to leverage the autonomous and isolated nature of docker containers to scale a Jenkins build farm to meet any demand placed upon it.
+	-> Instead of the traditional array of pre-allocated slaves or at-the-ready vm's, this model treats the entire container itself as a slave.
+	-> Jenkins will spin up containers whenever there's a demand for execution, automatically configure Jenkins to accept the containers as new slaves, execute the jobs, and finally shut down the container and deallocate the slave
+
+  - LESSONS LEARNED
+
+	-> Operating Dockerhosts at a scale is not simple
+	  - Disk space - Docker images eat space, every running container eats space, sometimes dead containers eat space... therefore monitoring disk space is essential.
+	
+	-> Cleaning up images and containers is like garbage collection
+	  - Everytime a new image is pushed to Dockerhost, it leaves "dangling" unused layers behind... clean them up to avoid disk space issues.
+
+	-> Adding new images/slaves to a fleet of Dockerhosts is time consuming
+	
+	-> MOnitoring is Essential
+	
+	-> Jenkins auditing can bite you
+	
+
+PART 7 - BUILDING WITH JENKINS INSIDE EPHEMERAL DOCKER CONTAINERS (PRACTICAL)
+
+--- Completed tutorial... Check jenkins-prod repo for up to date prod ready Jenkins
