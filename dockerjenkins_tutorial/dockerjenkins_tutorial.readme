@@ -7,6 +7,12 @@ This repo is meant to help me understand:
 -> Creating containerized "Build environments" using containers
 -> Handling "secret" data with images and Jenkins
 
+Outcomes:
+-> Create Docker images to deploy Jenkins in containers.
+-> Quickly spin up Jenkins test environments to test plugins in isolatation.
+-> Repproduce cases for problems.
+-> Can help test impact of Jenkins upgrades on particular configs.
+-> Persist data with volumes and upgrade Jenkins without fear.
 
 DOCKER CHANGES
 
@@ -167,7 +173,48 @@ PART 4 - JENKINS, DOCKER, PROXIES, AND COMPOSE
  - DOCKER COMPOSE & JENKINS
    - Docker compose is "A tool designed for running complex apps with Docker" - (https://docs.docker.com/compose/)
    - Compose handles building images and maintaining responsibility around what to stop and start when the application is rerun.
-   - Can also help create data volumes and networks/
+   - Can also help create data volumes and networks
+
+
+PART 5 - TAKING CONTROL OF DOCKER IMAGE
+ - Breakdown the image and understand how it really works.
+ - Manage dependencies by understanding where the FROM clause in the Dockerfile points and what it is retrieving
+ - BENEFITS:
+	-> Control the OS layer.
+	-> Limit secutity risks.
+
+ - DISCOVERING DEPENDENCIES
+
+  - Using the FROM jenkins/jenkins:2.112,
+	-> Go to dockerhub and see how it is built inside the Dockerfile
+	-> Take note for Jenkins in the Dockerfile: 
+		1. Environment variables : JENKINS_HOME, JENKINS_SLAVE_PORT, JENKINS_UC, and JENKINS_VERSION.
+		2. Dockerfile ARG (build time arguments) are set up for:
+		   -> user
+		   -> group
+		   -> uid
+		   -> gid
+		   -> http_port
+		   -> agent_port
+		   -> TINI_VERSION
+		   -> JENKINS_VERSION
+		   -> JENKINS_SHA
+		   -> JENKINS_URL
+		3. The image uses Tini to help manage any zombie processes, for Jenkins it is necessary.
+		4. The Jenkins war file is pulled into the image by the Dockerfile with a curl request.
+		5. The file itself installs curl, and git using apt-get, therefore the OS must be Debian/Ubuntu flavor of Linux.
+		6. Files copied into the container from source: 
+		   -> jenkins.sh - A shell script that starts Jenkins using the JAVA_OPTS and JENKINS_OPTS environment variables we set.
+		   -> plugins.sh - A legacy version of install-plugins.sh and is deprecated. 
+		   -> init.groovy - Runs when Jenkins starts, and as a groovy file it runs with context inside the Java WAR that is Jenkins. In this case it’s taking the environment variable set for the Slave agents (50000) and making sure that is the port Jenkins uses.
+		   -> Install-plugins.sh - This is a handy file that can be run to auto-download a list of plugins from a plugins text file.
+		7. Exposed Ports are:
+		   -> http_port - 8080, for Jenkins to listen on, and
+		   -> agent_port -  50000 Slaves to talk to Jenkins.
+   - Using the FROM openjdk:8-jdk
+
+ - CREATING CUSTOM DOKERFILE
+   -> See tutorial06/Dockerfile
 
 
 
